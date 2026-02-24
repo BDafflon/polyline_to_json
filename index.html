@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Polyline → GeoJSON</title>
+<!-- Material Icons CDN -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -33,17 +35,46 @@
   button {
     padding: 6px 10px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: none;
   }
 
   .trash {
     background: #ff4d4d;
-    border: none;
     color: white;
-    border-radius: 4px;
   }
 
-  .actions {
+  .add {
+    background: #4caf50;
+    color: white;
+  }
+
+  .download {
+    background: #2196f3;
+    color: white;
+  }
+
+  .upload {
+    background: #ff9800;
+    color: white;
+  }
+
+  .actions, .top-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-top: 20px;
+  }
+
+  .top-actions {
+    margin-bottom: 20px;
+  }
+
+  .material-icons {
+    font-size: 20px;
   }
 </style>
 </head>
@@ -51,11 +82,22 @@
 
 <h2>Gestion des Polylines</h2>
 
+<div class="top-actions">
+  <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(event)">
+  <button class="upload" onclick="document.getElementById('csvInput').click()">
+    <span class="material-icons">upload_file</span> Upload CSV
+  </button>
+</div>
+
 <div id="lines-container"></div>
 
 <div class="actions">
-  <button onclick="addLine()">➕ Add line</button>
-  <button onclick="downloadGeoJSON()">⬇ Download GeoJSON</button>
+  <button class="add" onclick="addLine()">
+    <span class="material-icons">add</span> Add line
+  </button>
+  <button class="download" onclick="downloadGeoJSON()">
+    <span class="material-icons">download</span> Download GeoJSON
+  </button>
 </div>
 
 <script>
@@ -87,7 +129,7 @@ function decodePolyline(str) {
     const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
     lng += dlng;
 
-    coordinates.push([lng / 1e5, lat / 1e5]); // GeoJSON format
+    coordinates.push([lng / 1e5, lat / 1e5]);
   }
 
   return coordinates;
@@ -102,7 +144,9 @@ function addLine(name = "", polyline = "") {
   row.innerHTML = `
     <input class="name" placeholder="name" value="${name}">
     <input class="polyline" placeholder="polyline" value="${polyline}">
-    <button class="trash">🗑</button>
+    <button class="trash" title="Supprimer">
+      <span class="material-icons">delete</span>
+    </button>
   `;
 
   row.querySelector(".trash").onclick = () => row.remove();
@@ -112,7 +156,6 @@ function addLine(name = "", polyline = "") {
 
 function downloadGeoJSON() {
   const rows = document.querySelectorAll(".line-row");
-
   const features = [];
 
   rows.forEach(row => {
@@ -138,15 +181,41 @@ function downloadGeoJSON() {
     features
   };
 
-  const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob(
+    [JSON.stringify(geojson, null, 2)],
+    { type: "application/json" }
+  );
 
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = "lines.geojson";
   a.click();
-
   URL.revokeObjectURL(url);
+}
+
+function handleCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+
+    const startIndex = lines[0].toLowerCase().includes("name") ? 1 : 0;
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const [name, polyline] = lines[i].split(",");
+
+      if (name && polyline) {
+        addLine(name.trim(), polyline.trim());
+      }
+    }
+  };
+
+  reader.readAsText(file);
 }
 
 // 3 lignes par défaut
