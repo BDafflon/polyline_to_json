@@ -3,89 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <title>Polyline → GeoJSON + Leaflet</title>
-<!-- Material Icons CDN -->
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    max-width: 900px;
-    margin: 40px auto;
-  }
-
-  .line-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    align-items: center;
-  }
-
-  input {
-    padding: 6px;
-    font-size: 14px;
-  }
-
-  .name {
-    width: 120px;
-  }
-
-  .polyline {
-    flex: 1;
-  }
-
-  button {
-    padding: 6px 10px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    background: transparent;
-    color: #333;
-    font-size: 14px;
-    transition: background 0.2s, color 0.2s;
-  }
-
-  button:hover {
-    background: #f0f0f0;
-    color: #000;
-  }
-
-  .material-icons {
-    font-size: 20px;
-    margin-right: 4px;
-  }
-
-  .actions, .top-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 20px;
-  }
-
-  .top-actions {
-    margin-bottom: 20px;
-  }
-
-  .trash {
-    border: none;
-    padding: 4px;
-    background: transparent;
-    color: #e53935;
-  }
-
-  .trash:hover {
-    background: #fce4e4;
-  }
-
-  /* Carte Leaflet */
-  #map {
-    height: 500px;
-    margin-top: 30px;
-    border: 1px solid #ccc;
-  }
+  body { font-family: Arial; max-width: 900px; margin: 40px auto; }
+  .line-row { display:flex; gap:10px; margin-bottom:10px; align-items:center; }
+  input { padding:6px; font-size:14px; }
+  .name { width:120px; }
+  .polyline { flex:1; }
+  button { padding:6px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:4px; border:1px solid #ccc; background:transparent; color:#333; font-size:14px; transition: background 0.2s,color 0.2s; }
+  button:hover { background:#f0f0f0; color:#000; }
+  .material-icons { font-size:20px; margin-right:4px; }
+  .actions,.top-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+  .top-actions { margin-bottom:20px; }
+  .trash { border:none; padding:4px; background:transparent; color:#e53935; }
+  .trash:hover { background:#fce4e4; }
+  #map { height:500px; margin-top:30px; border:1px solid #ccc; }
 </style>
 </head>
 <body>
@@ -102,151 +35,110 @@
 <div id="lines-container"></div>
 
 <div class="actions">
-  <button onclick="addLine()">
-    <span class="material-icons">add</span> Add line
-  </button>
-  <button onclick="downloadGeoJSON()">
-    <span class="material-icons">download</span> Download GeoJSON
-  </button>
-  <button onclick="visualizePolylines()">
-    <span class="material-icons">map</span> Visualize
-  </button>
+  <button onclick="addLine()"><span class="material-icons">add</span> Add line</button>
+  <button onclick="downloadGeoJSON()"><span class="material-icons">download</span> Download GeoJSON</button>
+  <button onclick="visualizePolylines()"><span class="material-icons">map</span> Visualize</button>
 </div>
 
-<!-- Carte Leaflet -->
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+let map = null;
+let polylineLayers = [];
+
 function decodePolyline(str) {
-  let index = 0, lat = 0, lng = 0;
-  const coordinates = [];
-
-  while (index < str.length) {
-    let result = 0, shift = 0, b;
-
-    do {
-      b = str.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-
-    const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
-    lat += dlat;
-
-    result = 0;
-    shift = 0;
-
-    do {
-      b = str.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-
-    const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
-    lng += dlng;
-
-    coordinates.push([lat / 1e5, lng / 1e5]); // Leaflet = [lat, lng]
+  let index=0, lat=0, lng=0, coordinates=[];
+  while(index<str.length){
+    let result=0, shift=0, b;
+    do { b=str.charCodeAt(index++)-63; result|=(b&0x1f)<<shift; shift+=5; } while(b>=0x20);
+    lat += (result&1)?~(result>>1):(result>>1);
+    result=0; shift=0;
+    do { b=str.charCodeAt(index++)-63; result|=(b&0x1f)<<shift; shift+=5; } while(b>=0x20);
+    lng += (result&1)?~(result>>1):(result>>1);
+    coordinates.push([lat/1e5,lng/1e5]);
   }
-
   return coordinates;
 }
 
-function addLine(name = "", polyline = "") {
-  const container = document.getElementById("lines-container");
-
-  const row = document.createElement("div");
-  row.className = "line-row";
-
-  row.innerHTML = `
+function addLine(name="",polyline=""){
+  const container=document.getElementById("lines-container");
+  const row=document.createElement("div");
+  row.className="line-row";
+  row.innerHTML=`
     <input class="name" placeholder="name" value="${name}">
     <input class="polyline" placeholder="polyline" value="${polyline}">
-    <button class="trash" title="Supprimer">
-      <span class="material-icons">delete</span>
-    </button>
+    <button class="trash" title="Supprimer"><span class="material-icons">delete</span></button>
   `;
-
-  row.querySelector(".trash").onclick = () => row.remove();
-
+  row.querySelector(".trash").onclick=()=>row.remove();
   container.appendChild(row);
 }
 
-function downloadGeoJSON() {
-  const rows = document.querySelectorAll(".line-row");
-  const features = [];
-
-  rows.forEach(row => {
-    const name = row.querySelector(".name").value.trim();
-    const polyline = row.querySelector(".polyline").value.trim();
-    if (!name || !polyline) return;
-
-    const coords = decodePolyline(polyline);
-    const coordinates = coords.map(c => [c[1], c[0]]); // GeoJSON [lng, lat]
-
-    features.push({
-      type: "Feature",
-      properties: { name },
-      geometry: { type: "LineString", coordinates }
-    });
+function downloadGeoJSON(){
+  const rows=document.querySelectorAll(".line-row");
+  const features=[];
+  rows.forEach(row=>{
+    const name=row.querySelector(".name").value.trim();
+    const polyline=row.querySelector(".polyline").value.trim();
+    if(!name||!polyline) return;
+    const coords=decodePolyline(polyline);
+    const coordinates=coords.map(c=>[c[1],c[0]]);
+    features.push({type:"Feature",properties:{name},geometry:{type:"LineString",coordinates}});
   });
-
-  const geojson = { type: "FeatureCollection", features };
-  const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "lines.geojson";
+  const geojson={type:"FeatureCollection",features};
+  const blob=new Blob([JSON.stringify(geojson,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="lines.geojson";
   a.click();
   URL.revokeObjectURL(url);
 }
 
-function handleCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-    const startIndex = lines[0].toLowerCase().includes("name") ? 1 : 0;
-
-    for (let i = startIndex; i < lines.length; i++) {
-      const [name, polyline] = lines[i].split(",");
-      if (name && polyline) addLine(name.trim(), polyline.trim());
+function handleCSV(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    const lines=text.split(/\r?\n/).filter(l=>l.trim()!=="");
+    const startIndex=lines[0].toLowerCase().includes("name")?1:0;
+    for(let i=startIndex;i<lines.length;i++){
+      const [name,polyline]=lines[i].split(",");
+      if(name && polyline) addLine(name.trim(),polyline.trim());
     }
   };
   reader.readAsText(file);
 }
 
-function visualizePolylines() {
-  const rows = document.querySelectorAll(".line-row");
-  if (rows.length === 0) return alert("Aucune polyline à visualiser.");
+function visualizePolylines(){
+  const rows=document.querySelectorAll(".line-row");
+  if(rows.length===0) return alert("Aucune polyline à visualiser.");
 
-  // Initialisation carte Leaflet
-  const mapDiv = document.getElementById("map");
-  mapDiv.innerHTML = ""; // reset
-  const map = L.map("map").setView([0, 0], 2);
+  // Init carte une seule fois
+  if(!map){
+    map=L.map("map").setView([0,0],2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'© OpenStreetMap'
+    }).addTo(map);
+  }
 
-  // Tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
+  // Supprimer les anciennes polylines
+  polylineLayers.forEach(l=>map.removeLayer(l));
+  polylineLayers=[];
 
-  const bounds = [];
-
-  rows.forEach(row => {
-    const name = row.querySelector(".name").value.trim();
-    const polyline = row.querySelector(".polyline").value.trim();
-    if (!name || !polyline) return;
-
-    const coords = decodePolyline(polyline); // [lat, lng]
-    const polylineLayer = L.polyline(coords, { color: 'blue' }).addTo(map);
+  const bounds=[];
+  rows.forEach(row=>{
+    const name=row.querySelector(".name").value.trim();
+    const polyline=row.querySelector(".polyline").value.trim();
+    if(!name||!polyline) return;
+    const coords=decodePolyline(polyline); // [lat,lng]
+    const polylineLayer=L.polyline(coords,{color:'blue'}).addTo(map);
     polylineLayer.bindPopup(name);
+    polylineLayers.push(polylineLayer);
     bounds.push(...coords);
   });
 
-  if (bounds.length > 0) map.fitBounds(bounds);
+  if(bounds.length>0) map.fitBounds(bounds);
 }
 
 // 3 lignes par défaut
