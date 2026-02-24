@@ -6,19 +6,19 @@
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
-  body { font-family: Arial; max-width: 900px; margin: 40px auto; }
-  .line-row { display:flex; gap:10px; margin-bottom:10px; align-items:center; }
-  input { padding:6px; font-size:14px; }
-  .name { width:120px; }
-  .polyline { flex:1; }
-  button { padding:6px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:4px; border:1px solid #ccc; background:transparent; color:#333; font-size:14px; transition: background 0.2s,color 0.2s; }
-  button:hover { background:#f0f0f0; color:#000; }
-  .material-icons { font-size:20px; margin-right:4px; }
-  .actions,.top-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
-  .top-actions { margin-bottom:20px; }
-  .trash { border:none; padding:4px; background:transparent; color:#e53935; }
-  .trash:hover { background:#fce4e4; }
-  #map { height:500px; margin-top:30px; border:1px solid #ccc; }
+body { font-family: Arial; max-width: 900px; margin: 40px auto; }
+.line-row { display:flex; gap:10px; margin-bottom:10px; align-items:center; }
+input { padding:6px; font-size:14px; }
+.name { width:120px; }
+.polyline { flex:1; }
+button { padding:6px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:4px; border:1px solid #ccc; background:transparent; color:#333; font-size:14px; transition: background 0.2s,color 0.2s; }
+button:hover { background:#f0f0f0; color:#000; }
+.material-icons { font-size:20px; margin-right:4px; }
+.actions,.top-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+.top-actions { margin-bottom:20px; }
+.trash { border:none; padding:4px; background:transparent; color:#e53935; }
+.trash:hover { background:#fce4e4; }
+#map { height:500px; margin-top:30px; border:1px solid #ccc; }
 </style>
 </head>
 <body>
@@ -46,6 +46,18 @@
 <script>
 let map = null;
 let polylineLayers = [];
+
+// Tableau de 64 couleurs distinctes
+const colors64 = [
+"#e6194b","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#46f0f0","#f032e6",
+"#bcf60c","#fabebe","#008080","#e6beff","#9a6324","#fffac8","#800000","#aaffc3",
+"#808000","#ffd8b1","#000075","#808080","#ffffff","#000000","#ff0000","#00ff00",
+"#0000ff","#ffff00","#ff00ff","#00ffff","#800000","#808000","#008000","#800080",
+"#008080","#000080","#ffa500","#a52a2a","#8a2be2","#5f9ea0","#d2691e","#ff7f50",
+"#6495ed","#dc143c","#00008b","#008b8b","#b8860b","#006400","#8b008b","#556b2f",
+"#ff8c00","#9932cc","#8b0000","#e9967a","#8fbc8f","#483d8b","#2f4f4f","#00ced1",
+"#9400d3","#ff1493","#00bfff","#696969","#1e90ff","#b22222","#228b22","#ff69b4"
+];
 
 function decodePolyline(str) {
   let index=0, lat=0, lng=0, coordinates=[];
@@ -110,16 +122,10 @@ function handleCSV(event){
   reader.readAsText(file);
 }
 
-// Génère une couleur déterministe à partir d'une chaîne (nom)
-function colorFromString(str){
+function colorFromName(name){
   let hash=0;
-  for(let i=0;i<str.length;i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  let color = '#';
-  for(let i=0;i<3;i++){
-    const value=(hash>>(i*8)) & 0xFF;
-    color += value.toString(16).padStart(2,'0');
-  }
-  return color;
+  for(let i=0;i<name.length;i++) hash += name.charCodeAt(i);
+  return colors64[hash % colors64.length];
 }
 
 function visualizePolylines(){
@@ -142,7 +148,7 @@ function visualizePolylines(){
     const polyline=row.querySelector(".polyline").value.trim();
     if(!name||!polyline) return;
     const coords=decodePolyline(polyline);
-    const color=colorFromString(name); // couleur déterministe
+    const color=colorFromName(name); // couleur déterministe parmi 64
     const polylineLayer=L.polyline(coords,{color}).addTo(map);
     polylineLayer.bindPopup(name);
     polylineLayers.push(polylineLayer);
