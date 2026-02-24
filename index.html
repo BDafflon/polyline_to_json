@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Polyline → GeoJSON</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: 40px auto;
+  }
+
+  .line-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+
+  input {
+    padding: 6px;
+    font-size: 14px;
+  }
+
+  .name {
+    width: 120px;
+  }
+
+  .polyline {
+    flex: 1;
+  }
+
+  button {
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .trash {
+    background: #ff4d4d;
+    border: none;
+    color: white;
+    border-radius: 4px;
+  }
+
+  .actions {
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Gestion des Polylines</h2>
+
+<div id="lines-container"></div>
+
+<div class="actions">
+  <button onclick="addLine()">➕ Add line</button>
+  <button onclick="downloadGeoJSON()">⬇ Download GeoJSON</button>
+</div>
+
+<script>
+function decodePolyline(str) {
+  let index = 0, lat = 0, lng = 0;
+  const coordinates = [];
+
+  while (index < str.length) {
+    let result = 0, shift = 0, b;
+
+    do {
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lat += dlat;
+
+    result = 0;
+    shift = 0;
+
+    do {
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lng += dlng;
+
+    coordinates.push([lng / 1e5, lat / 1e5]); // GeoJSON format
+  }
+
+  return coordinates;
+}
+
+function addLine(name = "", polyline = "") {
+  const container = document.getElementById("lines-container");
+
+  const row = document.createElement("div");
+  row.className = "line-row";
+
+  row.innerHTML = `
+    <input class="name" placeholder="name" value="${name}">
+    <input class="polyline" placeholder="polyline" value="${polyline}">
+    <button class="trash">🗑</button>
+  `;
+
+  row.querySelector(".trash").onclick = () => row.remove();
+
+  container.appendChild(row);
+}
+
+function downloadGeoJSON() {
+  const rows = document.querySelectorAll(".line-row");
+
+  const features = [];
+
+  rows.forEach(row => {
+    const name = row.querySelector(".name").value.trim();
+    const polyline = row.querySelector(".polyline").value.trim();
+
+    if (!name || !polyline) return;
+
+    const coordinates = decodePolyline(polyline);
+
+    features.push({
+      type: "Feature",
+      properties: { name },
+      geometry: {
+        type: "LineString",
+        coordinates
+      }
+    });
+  });
+
+  const geojson = {
+    type: "FeatureCollection",
+    features
+  };
+
+  const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "lines.geojson";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+// 3 lignes par défaut
+addLine();
+addLine();
+addLine();
+</script>
+
+</body>
+</html>
