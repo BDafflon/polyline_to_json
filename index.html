@@ -39,27 +39,21 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    border: none;
+    border: 1px solid #ccc;
+    background: transparent;
+    color: #333;
+    font-size: 14px;
+    transition: background 0.2s, color 0.2s;
   }
 
-  .trash {
-    background: #ff4d4d;
-    color: white;
+  button:hover {
+    background: #f0f0f0;
+    color: #000;
   }
 
-  .add {
-    background: #4caf50;
-    color: white;
-  }
-
-  .download {
-    background: #2196f3;
-    color: white;
-  }
-
-  .upload {
-    background: #ff9800;
-    color: white;
+  .material-icons {
+    font-size: 20px;
+    margin-right: 4px;
   }
 
   .actions, .top-actions {
@@ -73,8 +67,15 @@
     margin-bottom: 20px;
   }
 
-  .material-icons {
-    font-size: 20px;
+  .trash {
+    border: none;
+    padding: 4px;
+    background: transparent;
+    color: #e53935;
+  }
+
+  .trash:hover {
+    background: #fce4e4;
   }
 </style>
 </head>
@@ -84,7 +85,7 @@
 
 <div class="top-actions">
   <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(event)">
-  <button class="upload" onclick="document.getElementById('csvInput').click()">
+  <button onclick="document.getElementById('csvInput').click()">
     <span class="material-icons">upload_file</span> Upload CSV
   </button>
 </div>
@@ -92,10 +93,10 @@
 <div id="lines-container"></div>
 
 <div class="actions">
-  <button class="add" onclick="addLine()">
+  <button onclick="addLine()">
     <span class="material-icons">add</span> Add line
   </button>
-  <button class="download" onclick="downloadGeoJSON()">
+  <button onclick="downloadGeoJSON()">
     <span class="material-icons">download</span> Download GeoJSON
   </button>
 </div>
