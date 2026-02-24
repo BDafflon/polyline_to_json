@@ -18,7 +18,10 @@ button:hover { background:#f0f0f0; color:#000; }
 .top-actions { margin-bottom:20px; }
 .trash { border:none; padding:4px; background:transparent; color:#e53935; }
 .trash:hover { background:#fce4e4; }
-#map { height:500px; margin-top:30px; border:1px solid #ccc; }
+#map { height:500px; margin-top:10px; border:1px solid #ccc; }
+#legend { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; margin-bottom:10px; }
+.legend-item { display:flex; align-items:center; gap:4px; font-size:14px; }
+.legend-color { width:16px; height:16px; }
 </style>
 </head>
 <body>
@@ -40,6 +43,7 @@ button:hover { background:#f0f0f0; color:#000; }
   <button onclick="visualizePolylines()"><span class="material-icons">map</span> Visualize</button>
 </div>
 
+<div id="legend"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -132,6 +136,7 @@ function visualizePolylines(){
   const rows=document.querySelectorAll(".line-row");
   if(rows.length===0) return alert("Aucune polyline à visualiser.");
 
+  // Init carte une seule fois
   if(!map){
     map=L.map("map").setView([0,0],2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -139,8 +144,13 @@ function visualizePolylines(){
     }).addTo(map);
   }
 
+  // Supprimer les anciennes polylines
   polylineLayers.forEach(l=>map.removeLayer(l));
   polylineLayers=[];
+
+  // Reset légende
+  const legendDiv=document.getElementById("legend");
+  legendDiv.innerHTML="";
 
   const bounds=[];
   rows.forEach(row=>{
@@ -148,11 +158,17 @@ function visualizePolylines(){
     const polyline=row.querySelector(".polyline").value.trim();
     if(!name||!polyline) return;
     const coords=decodePolyline(polyline);
-    const color=colorFromName(name); // couleur déterministe parmi 64
+    const color=colorFromName(name);
     const polylineLayer=L.polyline(coords,{color}).addTo(map);
     polylineLayer.bindPopup(name);
     polylineLayers.push(polylineLayer);
     bounds.push(...coords);
+
+    // Ajout à la légende
+    const item=document.createElement("div");
+    item.className="legend-item";
+    item.innerHTML=`<div class="legend-color" style="background:${color}"></div>${name}`;
+    legendDiv.appendChild(item);
   });
 
   if(bounds.length>0) map.fitBounds(bounds);
