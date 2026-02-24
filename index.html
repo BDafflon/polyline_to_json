@@ -2,9 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Polyline → GeoJSON</title>
+<title>Polyline → GeoJSON + Leaflet</title>
 <!-- Material Icons CDN -->
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -77,6 +79,13 @@
   .trash:hover {
     background: #fce4e4;
   }
+
+  /* Carte Leaflet */
+  #map {
+    height: 500px;
+    margin-top: 30px;
+    border: 1px solid #ccc;
+  }
 </style>
 </head>
 <body>
@@ -99,8 +108,16 @@
   <button onclick="downloadGeoJSON()">
     <span class="material-icons">download</span> Download GeoJSON
   </button>
+  <button onclick="visualizePolylines()">
+    <span class="material-icons">map</span> Visualize
+  </button>
 </div>
 
+<!-- Carte Leaflet -->
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 function decodePolyline(str) {
   let index = 0, lat = 0, lng = 0;
@@ -130,7 +147,7 @@ function decodePolyline(str) {
     const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
     lng += dlng;
 
-    coordinates.push([lng / 1e5, lat / 1e5]);
+    coordinates.push([lat / 1e5, lng / 1e5]); // Leaflet = [lat, lng]
   }
 
   return coordinates;
@@ -162,31 +179,20 @@ function downloadGeoJSON() {
   rows.forEach(row => {
     const name = row.querySelector(".name").value.trim();
     const polyline = row.querySelector(".polyline").value.trim();
-
     if (!name || !polyline) return;
 
-    const coordinates = decodePolyline(polyline);
+    const coords = decodePolyline(polyline);
+    const coordinates = coords.map(c => [c[1], c[0]]); // GeoJSON [lng, lat]
 
     features.push({
       type: "Feature",
       properties: { name },
-      geometry: {
-        type: "LineString",
-        coordinates
-      }
+      geometry: { type: "LineString", coordinates }
     });
   });
 
-  const geojson = {
-    type: "FeatureCollection",
-    features
-  };
-
-  const blob = new Blob(
-    [JSON.stringify(geojson, null, 2)],
-    { type: "application/json" }
-  );
-
+  const geojson = { type: "FeatureCollection", features };
+  const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -200,23 +206,47 @@ function handleCSV(event) {
   if (!file) return;
 
   const reader = new FileReader();
-
   reader.onload = function(e) {
     const text = e.target.result;
     const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-
     const startIndex = lines[0].toLowerCase().includes("name") ? 1 : 0;
 
     for (let i = startIndex; i < lines.length; i++) {
       const [name, polyline] = lines[i].split(",");
-
-      if (name && polyline) {
-        addLine(name.trim(), polyline.trim());
-      }
+      if (name && polyline) addLine(name.trim(), polyline.trim());
     }
   };
-
   reader.readAsText(file);
+}
+
+function visualizePolylines() {
+  const rows = document.querySelectorAll(".line-row");
+  if (rows.length === 0) return alert("Aucune polyline à visualiser.");
+
+  // Initialisation carte Leaflet
+  const mapDiv = document.getElementById("map");
+  mapDiv.innerHTML = ""; // reset
+  const map = L.map("map").setView([0, 0], 2);
+
+  // Tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  const bounds = [];
+
+  rows.forEach(row => {
+    const name = row.querySelector(".name").value.trim();
+    const polyline = row.querySelector(".polyline").value.trim();
+    if (!name || !polyline) return;
+
+    const coords = decodePolyline(polyline); // [lat, lng]
+    const polylineLayer = L.polyline(coords, { color: 'blue' }).addTo(map);
+    polylineLayer.bindPopup(name);
+    bounds.push(...coords);
+  });
+
+  if (bounds.length > 0) map.fitBounds(bounds);
 }
 
 // 3 lignes par défaut
