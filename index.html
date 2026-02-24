@@ -110,11 +110,14 @@ function handleCSV(event){
   reader.readAsText(file);
 }
 
+function randomColor() {
+  return '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+}
+
 function visualizePolylines(){
   const rows=document.querySelectorAll(".line-row");
   if(rows.length===0) return alert("Aucune polyline à visualiser.");
 
-  // Init carte une seule fois
   if(!map){
     map=L.map("map").setView([0,0],2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -122,7 +125,6 @@ function visualizePolylines(){
     }).addTo(map);
   }
 
-  // Supprimer les anciennes polylines
   polylineLayers.forEach(l=>map.removeLayer(l));
   polylineLayers=[];
 
@@ -131,8 +133,9 @@ function visualizePolylines(){
     const name=row.querySelector(".name").value.trim();
     const polyline=row.querySelector(".polyline").value.trim();
     if(!name||!polyline) return;
-    const coords=decodePolyline(polyline); // [lat,lng]
-    const polylineLayer=L.polyline(coords,{color:'blue'}).addTo(map);
+    const coords=decodePolyline(polyline);
+    const color=randomColor();
+    const polylineLayer=L.polyline(coords,{color}).addTo(map);
     polylineLayer.bindPopup(name);
     polylineLayers.push(polylineLayer);
     bounds.push(...coords);
