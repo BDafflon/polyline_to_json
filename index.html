@@ -6,179 +6,416 @@
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
-body { font-family: Arial; max-width: 900px; margin: 40px auto; }
-.line-row { display:flex; gap:10px; margin-bottom:10px; align-items:center; }
-input { padding:6px; font-size:14px; }
-.name { width:120px; }
-.polyline { flex:1; }
-button { padding:6px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:4px; border:1px solid #ccc; background:transparent; color:#333; font-size:14px; transition: background 0.2s,color 0.2s; }
-button:hover { background:#f0f0f0; color:#000; }
-.material-icons { font-size:20px; margin-right:4px; }
-.actions,.top-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
-.top-actions { margin-bottom:20px; }
-.trash { border:none; padding:4px; background:transparent; color:#e53935; }
-.trash:hover { background:#fce4e4; }
-#map { height:500px; margin-top:10px; border:1px solid #ccc; }
-#legend { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; margin-bottom:10px; }
-.legend-item { display:flex; align-items:center; gap:4px; font-size:14px; }
-.legend-color { width:16px; height:16px; }
+body { font-family: Arial; max-width: 1400px; margin: 20px auto; padding: 0 12px; }
+
+.top-actions {
+  display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center;
+}
+.top-actions button {
+  display:flex; align-items:center; justify-content:center; gap:4px;
+  padding:6px 10px; border-radius:4px; border:1px solid #ccc;
+  background:transparent; color:#333; font-size:14px; cursor:pointer; transition:0.2s;
+}
+.top-actions button:hover { background:#f0f0f0; color:#000; }
+.top-actions button:disabled { opacity:0.4; cursor:not-allowed; }
+.material-icons { font-size:20px; }
+
+#main { display:flex; gap:10px; }
+#left-col  { flex:2; display:flex; flex-direction:column; gap:10px; min-width:0; }
+#right-col { flex:1; display:flex; flex-direction:column; gap:10px; min-width:240px; }
+
+#map {
+  height:420px; border:1px solid #ccc; border-radius:6px;
+  position:relative; background:#e8eef3;
+}
+#map-placeholder {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; color:#bbb;
+  font-size:14px; gap:8px; z-index:1; pointer-events:none;
+}
+#map-placeholder .material-icons { font-size:48px; }
+
+.card { border:1px solid #ccc; border-radius:6px; padding:12px; background:#fff; }
+.card h3 {
+  margin:0 0 10px; font-size:13px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.5px; color:#555;
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+.card h3 .material-icons { font-size:16px; }
+
+#drop-zone {
+  border:2px dashed #ccc; border-radius:6px; padding:30px 20px;
+  text-align:center; cursor:pointer; background:#fafafa;
+  transition:0.2s; color:#666; font-size:14px;
+}
+#drop-zone:hover, #drop-zone.drag { border-color:#555; background:#f0f0f0; color:#333; }
+#drop-zone.loaded { border-color:#4caf50; border-style:solid; background:#f0fff4; }
+#drop-zone .dz-icon { font-size:36px; color:#bbb; display:block; margin-bottom:6px; }
+#drop-zone.loaded .dz-icon { color:#4caf50; }
+#drop-zone h3 { margin:0 0 2px; font-size:14px; font-weight:600; border:none; text-transform:none; letter-spacing:0; color:#666; padding:0; }
+#drop-zone.loaded h3 { color:#2e7d32; }
+#drop-zone p  { margin:0; font-size:11px; color:#999; }
+
+/* Lines table */
+.lines-table { width:100%; border-collapse:collapse; font-size:13px; }
+.lines-table th {
+  background:#f5f5f5; font-weight:700; text-transform:uppercase;
+  font-size:11px; letter-spacing:0.4px; color:#666;
+  padding:6px 8px; border:1px solid #e0e0e0; text-align:left;
+}
+.lines-table td { padding:4px 6px; border:1px solid #e8e8e8; }
+.lines-table td input {
+  width:100%; padding:4px 6px; border:1px solid #e0e0e0;
+  border-radius:4px; font-size:13px; font-family:Arial;
+  background:#fafafa; transition:0.15s;
+}
+.lines-table td input:focus { outline:none; border-color:#888; background:#fff; }
+.lines-table tr:hover td { background:#fafafa; }
+
+.btn-remove {
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:none; cursor:pointer;
+  color:#bbb; padding:4px; border-radius:4px; transition:0.15s;
+}
+.btn-remove:hover { color:#e53e3e; background:#ffeaea; }
+.btn-remove .material-icons { font-size:16px; }
+
+.btn-add {
+  display:flex; align-items:center; gap:4px;
+  padding:5px 10px; border-radius:4px; border:1px dashed #ccc;
+  background:transparent; color:#888; font-size:12px; cursor:pointer;
+  transition:0.2s; margin-top:6px; width:100%;
+  justify-content:center;
+}
+.btn-add:hover { border-color:#555; color:#333; background:#f5f5f5; }
+.btn-add .material-icons { font-size:16px; }
+
+/* Side panel */
+#sidePanel {
+  padding:10px; background:#f9f9f9; overflow:auto;
+  border:1px solid #ccc; border-radius:6px;
+  display:flex; flex-direction:column; gap:8px;
+}
+
+/* Legend */
+.legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:#444; padding:2px 0; }
+.legend-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.legend-line { width:18px; height:3px; border-radius:2px; flex-shrink:0; }
+
+/* Stats */
+.stats-row { display:flex; flex-wrap:wrap; gap:6px; }
+.stat-box { flex:1; min-width:75px; text-align:center; padding:7px 5px; border:1px solid #e0e0e0; border-radius:4px; background:#f9f9f9; }
+.stat-val { font-size:1.2rem; font-weight:700; color:#333; display:block; }
+.stat-lbl { font-size:10px; color:#888; text-transform:uppercase; letter-spacing:0.5px; }
+
+#map-tooltip {
+  position:fixed; z-index:9999; pointer-events:none;
+  background:rgba(20,20,28,0.92); color:#f0f0f5;
+  border-radius:8px; padding:8px 12px; font-size:12px; line-height:1.6;
+  min-width:120px; max-width:260px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.25);
+  border:1px solid rgba(255,255,255,0.08); display:none;
+}
+#map-tooltip .tt-header { display:flex; align-items:center; gap:7px; margin-bottom:2px; }
+#map-tooltip .tt-dot    { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+#map-tooltip .tt-title  { font-weight:700; font-size:13px; color:#fff; }
+#map-tooltip .tt-row    { display:flex; gap:6px; color:#b0b0c8; }
+#map-tooltip .tt-label  { color:#6b6b88; min-width:52px; }
+
+.section { display:none; }
+.section.visible { display:block; }
+
+#loadingOverlay {
+  position:fixed; inset:0; background:rgba(255,255,255,0.75);
+  display:none; justify-content:center; align-items:center; z-index:2000;
+}
+.spinner { border:6px solid #f3f3f3; border-top:6px solid #333; border-radius:50%; width:48px; height:48px; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+@media(max-width:800px) { #main { flex-direction:column; } }
 </style>
 </head>
 <body>
 
-<h2>Gestion des Polylines</h2>
+<div id="map-tooltip"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<h2>Polyline → GeoJSON</h2>
 
 <div class="top-actions">
-  <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(event)">
+  <input type="file" id="csvInput" accept=".csv" style="display:none">
   <button onclick="document.getElementById('csvInput').click()">
     <span class="material-icons">upload_file</span> Upload CSV
   </button>
+  <button id="btnVisualize" onclick="visualize()">
+    <span class="material-icons">map</span> Visualiser
+  </button>
+  <button id="btnDownload" onclick="downloadGeoJSON()">
+    <span class="material-icons">download</span> Télécharger GeoJSON
+  </button>
+  <button id="btnReset" onclick="resetAll()" style="margin-left:auto">
+    <span class="material-icons">refresh</span> Réinitialiser
+  </button>
 </div>
 
-<div id="lines-container"></div>
+<div id="main">
+  <div id="left-col">
 
-<div class="actions">
-  <button onclick="addLine()"><span class="material-icons">add</span> Add line</button>
-  <button onclick="downloadGeoJSON()"><span class="material-icons">download</span> Download GeoJSON</button>
-  <button onclick="visualizePolylines()"><span class="material-icons">map</span> Visualize</button>
+    <!-- Drop zone CSV -->
+    <div id="drop-zone">
+      <span class="material-icons dz-icon">upload_file</span>
+      <h3>Déposez un fichier CSV</h3>
+      <p>ou cliquez pour parcourir — colonnes : name, polyline</p>
+    </div>
+
+    <!-- Table des lignes -->
+    <div class="card">
+      <h3><span class="material-icons">route</span> Polylines <span id="count-label" style="font-weight:400;text-transform:none;letter-spacing:0;color:#aaa;font-size:12px"></span></h3>
+      <div style="overflow-x:auto">
+        <table class="lines-table">
+          <thead>
+            <tr>
+              <th style="width:140px">Nom</th>
+              <th>Polyline encodée</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="lines-body"></tbody>
+        </table>
+      </div>
+      <button class="btn-add" onclick="addLine()">
+        <span class="material-icons">add</span> Ajouter une ligne
+      </button>
+    </div>
+
+    <!-- Map -->
+    <div id="map">
+      <div id="map-placeholder">
+        <span class="material-icons">map</span>
+        <span>Cliquez sur "Visualiser" pour afficher les polylines</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="right-col">
+    <div id="sidePanel">
+      <div style="color:#bbb;font-style:italic;font-size:13px" id="side-empty">Aucune polyline visualisée</div>
+      <div id="legend-content"></div>
+    </div>
+
+    <div class="card section" id="sec-stats">
+      <h3><span class="material-icons">bar_chart</span> Statistiques</h3>
+      <div class="stats-row" id="stats-content"></div>
+    </div>
+  </div>
 </div>
-
-<div id="legend"></div>
-<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+
+// ── Couleurs ──────────────────────────────────────────────────────────────────
+const COLORS = [
+  '#e63946','#2196f3','#4caf50','#ff9800','#9c27b0',
+  '#00bcd4','#ff5722','#607d8b','#e91e63','#009688',
+  '#ffeb3b','#3f51b5','#8bc34a','#ff5252','#40c4ff',
+];
+let colorIdx = 0;
+const nextColor = () => COLORS[colorIdx++ % COLORS.length];
+
+const colorCache = {}; // name → color
+const getColor = (name) => {
+  if (!colorCache[name]) colorCache[name] = nextColor();
+  return colorCache[name];
+};
+
+// ── Carte ─────────────────────────────────────────────────────────────────────
 let map = null;
 let polylineLayers = [];
 
-// Tableau de 64 couleurs distinctes
-const colors64 = [
-"#e6194b","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#46f0f0","#f032e6",
-"#bcf60c","#fabebe","#008080","#e6beff","#9a6324","#fffac8","#800000","#aaffc3",
-"#808000","#ffd8b1","#000075","#808080","#ffffff","#000000","#ff0000","#00ff00",
-"#0000ff","#ffff00","#ff00ff","#00ffff","#800000","#808000","#008000","#800080",
-"#008080","#000080","#ffa500","#a52a2a","#8a2be2","#5f9ea0","#d2691e","#ff7f50",
-"#6495ed","#dc143c","#00008b","#008b8b","#b8860b","#006400","#8b008b","#556b2f",
-"#ff8c00","#9932cc","#8b0000","#e9967a","#8fbc8f","#483d8b","#2f4f4f","#00ced1",
-"#9400d3","#ff1493","#00bfff","#696969","#1e90ff","#b22222","#228b22","#ff69b4"
-];
+const initMap = () => {
+  if (map) return;
+  map = L.map('map').setView([46.8, 2.3], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  document.getElementById('map-placeholder').style.display = 'none';
+};
 
-function decodePolyline(str) {
-  let index=0, lat=0, lng=0, coordinates=[];
-  while(index<str.length){
-    let result=0, shift=0, b;
-    do { b=str.charCodeAt(index++)-63; result|=(b&0x1f)<<shift; shift+=5; } while(b>=0x20);
-    lat += (result&1)?~(result>>1):(result>>1);
-    result=0; shift=0;
-    do { b=str.charCodeAt(index++)-63; result|=(b&0x1f)<<shift; shift+=5; } while(b>=0x20);
-    lng += (result&1)?~(result>>1):(result>>1);
-    coordinates.push([lat/1e5,lng/1e5]);
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('map-tooltip');
+const showTT  = (e, html) => { tooltip.innerHTML = html; tooltip.style.display = 'block'; moveTT(e); };
+const moveTT  = (e) => {
+  const off = 14;
+  let x = e.clientX + off, y = e.clientY + off;
+  if (x + tooltip.offsetWidth  > window.innerWidth  - 8) x = e.clientX - tooltip.offsetWidth  - off;
+  if (y + tooltip.offsetHeight > window.innerHeight - 8) y = e.clientY - tooltip.offsetHeight - off;
+  tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
+};
+const hideTT = () => { tooltip.style.display = 'none'; };
+
+// ── Décodeur polyline ─────────────────────────────────────────────────────────
+const decodePolyline = (str) => {
+  let index = 0, lat = 0, lng = 0, coords = [];
+  while (index < str.length) {
+    let result = 0, shift = 0, b;
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    result = 0; shift = 0;
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    coords.push([lat / 1e5, lng / 1e5]);
   }
-  return coordinates;
-}
+  return coords;
+};
 
-function addLine(name="",polyline=""){
-  const container=document.getElementById("lines-container");
-  const row=document.createElement("div");
-  row.className="line-row";
-  row.innerHTML=`
-    <input class="name" placeholder="name" value="${name}">
-    <input class="polyline" placeholder="polyline" value="${polyline}">
-    <button class="trash" title="Supprimer"><span class="material-icons">delete</span></button>
-  `;
-  row.querySelector(".trash").onclick=()=>row.remove();
-  container.appendChild(row);
-}
+// ── Rows ──────────────────────────────────────────────────────────────────────
+const addLine = (name = '', polyline = '') => {
+  const tbody = document.getElementById('lines-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input class="inp-name" placeholder="Nom" value="${esc(name)}"></td>
+    <td><input class="inp-poly" placeholder="Polyline encodée (Google format)" value="${esc(polyline)}"></td>
+    <td><button class="btn-remove" title="Supprimer"><span class="material-icons">close</span></button></td>`;
+  tr.querySelector('.btn-remove').onclick = () => { tr.remove(); updateCount(); };
+  tbody.appendChild(tr);
+  updateCount();
+};
 
-function downloadGeoJSON(){
-  const rows=document.querySelectorAll(".line-row");
-  const features=[];
-  rows.forEach(row=>{
-    const name=row.querySelector(".name").value.trim();
-    const polyline=row.querySelector(".polyline").value.trim();
-    if(!name||!polyline) return;
-    const coords=decodePolyline(polyline);
-    const coordinates=coords.map(c=>[c[1],c[0]]);
-    features.push({type:"Feature",properties:{name},geometry:{type:"LineString",coordinates}});
+const updateCount = () => {
+  const n = document.querySelectorAll('#lines-body tr').length;
+  document.getElementById('count-label').textContent = n ? `— ${n} ligne(s)` : '';
+};
+
+const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// ── Visualiser ────────────────────────────────────────────────────────────────
+const visualize = () => {
+  const rows = document.querySelectorAll('#lines-body tr');
+  if (!rows.length) return;
+
+  initMap();
+  polylineLayers.forEach(l => map.removeLayer(l));
+  polylineLayers = [];
+
+  const legendEl  = document.getElementById('legend-content');
+  const emptyEl   = document.getElementById('side-empty');
+  legendEl.innerHTML = '';
+
+  const allBounds = [];
+  let totalPts = 0, validLines = 0;
+
+  rows.forEach(row => {
+    const name    = row.querySelector('.inp-name').value.trim();
+    const polyStr = row.querySelector('.inp-poly').value.trim();
+    if (!name || !polyStr) return;
+
+    let coords;
+    try { coords = decodePolyline(polyStr); } catch(e) { return; }
+    if (!coords.length) return;
+
+    validLines++;
+    totalPts += coords.length;
+    allBounds.push(...coords);
+
+    const color = getColor(name);
+    const poly  = L.polyline(coords, { color, weight: 3 }).addTo(map);
+    const html  = `<div class="tt-header"><div class="tt-dot" style="background:${color}"></div><span class="tt-title">${esc(name)}</span></div>
+      <div class="tt-row"><span class="tt-label">Points</span><span>${coords.length}</span></div>`;
+    poly.on('mouseover', function(e) { this.setStyle({ weight: 5 }); showTT(e.originalEvent, html); });
+    poly.on('mousemove', e => moveTT(e.originalEvent));
+    poly.on('mouseout',  function() { this.setStyle({ weight: 3 }); hideTT(); });
+    polylineLayers.push(poly);
+
+    legendEl.innerHTML += `
+      <div class="legend-item">
+        <div class="legend-line" style="background:${color}"></div>
+        <span>${esc(name)}</span>
+      </div>`;
   });
-  const geojson={type:"FeatureCollection",features};
-  const blob=new Blob([JSON.stringify(geojson,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="lines.geojson";
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
-function handleCSV(event){
-  const file=event.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const text=e.target.result;
-    const lines=text.split(/\r?\n/).filter(l=>l.trim()!=="");
-    const startIndex=lines[0].toLowerCase().includes("name")?1:0;
-    for(let i=startIndex;i<lines.length;i++){
-      const [name,polyline]=lines[i].split(",");
-      if(name && polyline) addLine(name.trim(),polyline.trim());
+  if (allBounds.length) map.fitBounds(allBounds);
+  emptyEl.style.display  = validLines ? 'none' : 'block';
+
+  // Stats
+  document.getElementById('stats-content').innerHTML = `
+    <div class="stat-box"><span class="stat-val">${validLines}</span><span class="stat-lbl">Lignes</span></div>
+    <div class="stat-box"><span class="stat-val">${totalPts}</span><span class="stat-lbl">Points</span></div>`;
+  document.getElementById('sec-stats').classList.add('visible');
+};
+
+// ── Download GeoJSON ──────────────────────────────────────────────────────────
+const downloadGeoJSON = () => {
+  const rows = document.querySelectorAll('#lines-body tr');
+  const features = [];
+  rows.forEach(row => {
+    const name    = row.querySelector('.inp-name').value.trim();
+    const polyStr = row.querySelector('.inp-poly').value.trim();
+    if (!name || !polyStr) return;
+    try {
+      const coords = decodePolyline(polyStr).map(c => [c[1], c[0]]);
+      features.push({ type: 'Feature', properties: { name }, geometry: { type: 'LineString', coordinates: coords } });
+    } catch(e) {}
+  });
+  if (!features.length) return alert('Aucune polyline valide à exporter.');
+  const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', features }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'lines.geojson'; a.click();
+};
+
+// ── CSV ───────────────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('click', () => document.getElementById('csvInput').click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) loadCSV(file);
+});
+document.getElementById('csvInput').addEventListener('change', e => {
+  if (e.target.files[0]) loadCSV(e.target.files[0]);
+  e.target.value = '';
+});
+
+const loadCSV = (file) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+    const start = lines[0].toLowerCase().includes('name') ? 1 : 0;
+    let added = 0;
+    for (let i = start; i < lines.length; i++) {
+      const idx = lines[i].indexOf(',');
+      if (idx < 0) continue;
+      const name = lines[i].slice(0, idx).trim();
+      const poly = lines[i].slice(idx + 1).trim();
+      if (name && poly) { addLine(name, poly); added++; }
+    }
+    if (added) {
+      dropZone.classList.add('loaded');
+      dropZone.querySelector('h3').textContent = `${added} ligne(s) importée(s) depuis ${file.name}`;
+      dropZone.querySelector('p').textContent  = 'Cliquez sur "Visualiser" pour afficher';
     }
   };
   reader.readAsText(file);
-}
+};
 
-function colorFromName(name){
-  let hash=0;
-  for(let i=0;i<name.length;i++) hash += name.charCodeAt(i);
-  return colors64[hash % colors64.length];
-}
+// ── Reset ─────────────────────────────────────────────────────────────────────
+const resetAll = () => {
+  document.getElementById('lines-body').innerHTML = '';
+  polylineLayers.forEach(l => map && map.removeLayer(l));
+  polylineLayers = [];
+  document.getElementById('legend-content').innerHTML = '';
+  document.getElementById('side-empty').style.display = 'block';
+  document.getElementById('sec-stats').classList.remove('visible');
+  dropZone.className = '';
+  dropZone.querySelector('h3').textContent = 'Déposez un fichier CSV';
+  dropZone.querySelector('p').textContent  = 'ou cliquez pour parcourir — colonnes : name, polyline';
+  updateCount();
+  addLine(); addLine(); addLine();
+};
 
-function visualizePolylines(){
-  const rows=document.querySelectorAll(".line-row");
-  if(rows.length===0) return alert("Aucune polyline à visualiser.");
-
-  // Init carte une seule fois
-  if(!map){
-    map=L.map("map").setView([0,0],2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'© OpenStreetMap'
-    }).addTo(map);
-  }
-
-  // Supprimer les anciennes polylines
-  polylineLayers.forEach(l=>map.removeLayer(l));
-  polylineLayers=[];
-
-  // Reset légende
-  const legendDiv=document.getElementById("legend");
-  legendDiv.innerHTML="";
-
-  const bounds=[];
-  rows.forEach(row=>{
-    const name=row.querySelector(".name").value.trim();
-    const polyline=row.querySelector(".polyline").value.trim();
-    if(!name||!polyline) return;
-    const coords=decodePolyline(polyline);
-    const color=colorFromName(name);
-    const polylineLayer=L.polyline(coords,{color}).addTo(map);
-    polylineLayer.bindPopup(name);
-    polylineLayers.push(polylineLayer);
-    bounds.push(...coords);
-
-    // Ajout à la légende
-    const item=document.createElement("div");
-    item.className="legend-item";
-    item.innerHTML=`<div class="legend-color" style="background:${color}"></div>${name}`;
-    legendDiv.appendChild(item);
-  });
-
-  if(bounds.length>0) map.fitBounds(bounds);
-}
-
-// 3 lignes par défaut
-addLine();
-addLine();
-addLine();
+// Init : 3 lignes vides
+addLine(); addLine(); addLine();
 </script>
-
 </body>
-</html>
+</html>t
